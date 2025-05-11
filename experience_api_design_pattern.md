@@ -16,6 +16,8 @@ The Experience API design pattern addresses the following challenges in a modern
 
 The bank operates globally across multiple markets and serves both **retail and affluent** customers across domains like **CASA, term deposits, investments, loans, cards, and payments**. The core banking backend is heterogeneous and varies across regions and product lines. The bank is undergoing modernization and intends to **align with API-led connectivity principles** (Experience, Process, and System APIs).
 
+//todo
+
 ## 3. Scope
 
 This pattern applies to the **Experience API layer** within an API-led architecture. It focuses on:

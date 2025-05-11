@@ -7,16 +7,17 @@ This design pattern addresses several key challenges in the current banking arch
 1. **Journey Fragmentation**: Mobile and web applications invoke multiple channel APIs to fulfill a single user journey, creating unnecessary complexity and potential points of failure.
 
 2. **Security Inconsistency**: Varied security controls across different channels lead to potential vulnerabilities and compliance issues.
+3. //to do
 
-3. **Business Logic Redundancy**: The same business logic is duplicated across different client channels, causing maintenance overhead and inconsistent implementations.
+4. **Business Logic Redundancy**: The same business logic is duplicated across different client channels, causing maintenance overhead and inconsistent implementations.
 
-4. **Incorrect Orchestration Layer**: Business logic orchestration is happening in the channel layer rather than in the Process API layer where it belongs.
+5. **Incorrect Orchestration Layer**: Business logic orchestration is happening in the channel layer rather than in the Process API layer where it belongs.
 
-5. **Client Complexity**: Clients are responsible for managing multiple API calls and handling errors across varied journeys.
+6. **Client Complexity**: Clients are responsible for managing multiple API calls and handling errors across varied journeys.
 
-6. **Cross-Channel Consistency**: Difficulty in maintaining consistent user experiences across different client applications.
+7. **Cross-Channel Consistency**: Difficulty in maintaining consistent user experiences across different client applications.
 
-7. **Backend System Integration**: Complex integration with diverse core banking systems across international operations.
+8. **Backend System Integration**: Complex integration with diverse core banking systems across international operations.
 
 ## Context
 

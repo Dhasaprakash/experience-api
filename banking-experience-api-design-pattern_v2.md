@@ -61,7 +61,7 @@ The pattern does not cover:
 - Specific implementation technologies or frameworks
 - Detailed API specifications or schemas
 - Internal Process API or System API designs
-- DevOps practices for API deployment
+- DevOps practices for API deployment - required or not
 
 ## Solution
 
