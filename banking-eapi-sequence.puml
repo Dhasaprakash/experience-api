@@ -1,0 +1,182 @@
+@startuml Banking Home Page Experience API Flow
+!theme plain
+
+'Define participant colors
+skinparam participant {
+    BackgroundColor<<Client>> #C5E1A5
+    BackgroundColor<<API_Gateway>> #BBDEFB
+    BackgroundColor<<EAPI>> #FFCCBC
+    BackgroundColor<<IAM>> #D1C4E9
+    BackgroundColor<<Orchestration>> #FFE082
+    BackgroundColor<<Cache>> #B2DFDB
+    BackgroundColor<<Aggregation>> #FFCDD2
+    BackgroundColor<<PAPI>> #B3E5FC
+    BackgroundColor<<SAPI>> #F5F5F5
+}
+
+'Define arrow colors
+skinparam arrow {
+    Color #333333
+}
+
+'Define actors and systems
+actor "User" as user
+participant "Mobile/Web Client" as client <<Client>>
+participant "API Gateway" as gateway <<API_Gateway>>
+participant "Identity & Access Management" as iam <<IAM>>
+
+box "Experience API Layer" #FFF3E0
+    participant "Home Page Experience API" as homeapi <<EAPI>>
+    participant "Segment Adapter" as segmentadapter <<EAPI>>
+    participant "Cache Manager" as cache <<Cache>>
+    participant "Orchestration Engine" as orchestration <<Orchestration>>
+    participant "Response Aggregator" as aggregator <<Aggregation>>
+end box
+
+box "Process API Layer" #E1F5FE
+    participant "Account Process API" as accountapi <<PAPI>>
+    participant "Transaction Process API" as txapi <<PAPI>>
+    participant "Offer Process API" as offerapi <<PAPI>>
+    participant "Notification Process API" as notifapi <<PAPI>>
+end box
+
+box "System API Layer" #F5F5F5
+    participant "Core Banking System API" as coreapi <<SAPI>>
+    participant "Transaction System API" as txsysapi <<SAPI>>
+    participant "Marketing System API" as marketingapi <<SAPI>>
+    participant "Notification System API" as notifsysapi <<SAPI>>
+end box
+
+'Start sequence
+title Banking Home Page Experience API - Sequence Flow
+
+'Initial request
+user -> client : Access home page
+activate client
+
+client -> gateway : GET /retail/home-page
+activate gateway
+note right of client: Single unified API call\ninstead of multiple calls
+
+'Gateway processing
+gateway -> iam : Validate token & permissions
+activate iam
+iam -> iam : Verify token signature
+iam -> iam : Extract user claims
+iam -> iam : Check permissions
+iam --> gateway : User authenticated & authorized
+deactivate iam
+
+'Route to Experience API
+gateway -> homeapi : Forward request with auth context
+deactivate gateway
+activate homeapi
+
+'User context processing
+homeapi -> homeapi : Extract user context
+homeapi -> homeapi : Determine user segment\n(retail/affluent)
+
+'Segment-specific adapter
+homeapi -> segmentadapter : Apply segment rules
+activate segmentadapter
+segmentadapter -> segmentadapter : Configure view model
+segmentadapter -> segmentadapter : Set personalization rules
+segmentadapter --> homeapi : Segment-specific configuration
+deactivate segmentadapter
+
+'Check cache first
+homeapi -> cache : Check for cached data
+activate cache
+cache -> cache : Generate cache keys based on\nuser ID and segment
+alt Cache hit for some/all components
+    cache --> homeapi : Return cached components
+else Cache miss
+    cache --> homeapi : No cached data available
+end
+deactivate cache
+
+'Orchestration for missing data
+homeapi -> orchestration : Request missing components
+activate orchestration
+note right of orchestration: Parallel execution of\nbackend service calls
+
+'Parallel Process API calls
+par Account data
+    orchestration -> accountapi : Get accounts
+    activate accountapi
+    accountapi -> coreapi : Fetch account data
+    activate coreapi
+    coreapi --> accountapi : Account details
+    deactivate coreapi
+    accountapi --> orchestration : Processed account data
+    deactivate accountapi
+    
+    par Transaction data
+        orchestration -> txapi : Get recent transactions
+        activate txapi
+        txapi -> txsysapi : Fetch transactions
+        activate txsysapi
+        txsysapi --> txapi : Transaction details
+        deactivate txsysapi
+        txapi --> orchestration : Processed transaction data
+        deactivate txapi
+    end 
+    
+    par Personalized offers
+        orchestration -> offerapi : Get relevant offers
+        activate offerapi
+        offerapi -> marketingapi : Fetch offers
+        activate marketingapi
+        marketingapi --> offerapi : Available offers
+        deactivate marketingapi
+        offerapi --> orchestration : Personalized offers
+        deactivate offerapi
+    end
+
+    par Notifications
+        orchestration -> notifapi : Get notifications
+        activate notifapi
+        notifapi -> notifsysapi : Fetch notifications
+        activate notifsysapi
+        notifsysapi --> notifapi : User notifications
+        deactivate notifsysapi
+        notifapi --> orchestration : Filtered notifications
+        deactivate notifapi
+    end
+end
+
+'Collect all responses
+orchestration -> orchestration : Apply timeout handling
+orchestration -> orchestration : Handle partial failures
+
+orchestration --> homeapi : All available component data
+deactivate orchestration
+
+'Aggregate responses
+homeapi -> aggregator : Aggregate component data
+activate aggregator
+aggregator -> aggregator : Combine data sources
+aggregator -> aggregator : Resolve conflicts
+aggregator -> aggregator : Apply data transformations
+aggregator -> aggregator : Format response structure
+aggregator --> homeapi : Unified response model
+deactivate aggregator
+
+'Update cache
+homeapi -> cache : Update cache with new data
+activate cache
+cache -> cache : Store with appropriate TTL
+cache -> cache : Set invalidation triggers
+cache --> homeapi : Cache updated
+deactivate cache
+
+'Return unified response
+homeapi --> client : Complete home page data
+deactivate homeapi
+
+'Client processing
+client -> client : Render home page with\nall components
+client --> user : Display unified home page
+deactivate client
+
+@enduml

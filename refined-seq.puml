@@ -1,0 +1,213 @@
+
+@startuml Generic Experience API Flow
+!theme plain
+
+'Define participant colors
+skinparam participant {
+    BackgroundColor<<Client>> #C5E1A5
+    BackgroundColor<<API_Gateway>> #BBDEFB
+    BackgroundColor<<EAPI>> #FFCCBC
+    BackgroundColor<<IAM>> #D1C4E9
+    BackgroundColor<<Orchestration>> #FFE082
+    BackgroundColor<<Cache>> #B2DFDB
+    BackgroundColor<<Aggregation>> #FFCDD2
+    BackgroundColor<<PAPI>> #B3E5FC
+    BackgroundColor<<SAPI>> #F5F5F5
+    BackgroundColor<<SideCar>>  #F5F5F5
+}
+
+'Define arrow colors
+skinparam arrow {
+    Color #333333
+}
+
+'Define actors and systems
+actor "User" as user
+participant "Client Application" as client <<Client>>
+participant "API Gateway" as gateway <<API_Gateway>>
+participant "Identity & Access Management" as iam <<IAM>>
+
+box "Experience API Layer" #FFF3E0
+    participant "API Chassis" as xapisidecar <<SideCar>>
+    participant "Journey Experience API" as journeyapi <<EAPI>>
+    participant "Request Adapter" as segmentadapter <<EAPI>>
+    participant "Cache Manager" as cache <<Cache>>
+    participant "Orchestration Engine" as orchestration <<Orchestration>>
+    participant "Response Aggregator" as aggregator <<Aggregation>>
+end box
+
+box "Process API Layer" #E1F5FE
+    participant "Process API 1" as procapi1 <<PAPI>>
+    participant "Process API 2" as procapi2 <<PAPI>>
+    participant "Process API 3" as procapi3 <<PAPI>>
+    participant "Process API 4" as procapi4 <<PAPI>>
+end box
+
+box "Process API Layer" #E1F5FE
+    box "Process API Layer1" #E1F5FE
+        participant "API Chassis" as xapisidecar1 <<SideCar>>
+        participant "Process API 1" as procapi1 <<PAPI>>
+    end box
+   box "Process API Layer2" #E1F5FE
+        participant "API Chassis" as xapisidecar2 <<SideCar>>
+        participant "Process API 2" as procapi2 <<PAPI>>
+    end box
+    box "Process API Layer3" #E1F5FE
+        participant "API Chassis" as xapisidecar3 <<SideCar>>
+        participant "Process API 3" as procapi3 <<PAPI>>
+    end box
+    box "Process API Layer4" #E1F5FE
+        participant "API Chassis" as xapisidecar4 <<SideCar>>
+        participant "Process API 4" as procapi4 <<PAPI>>
+    end box
+end box
+
+box "System API Layer" #F5F5F5
+    participant "Backend System 1" as sysapi1 <<SAPI>>
+    participant "Backend System 2" as sysapi2 <<SAPI>>
+    participant "Backend System 3" as sysapi3 <<SAPI>>
+    participant "Backend System 4" as sysapi4 <<SAPI>>
+end box
+
+'Start sequence
+title Generic Experience API - Sequence Flow
+
+'Initial request
+user -> client : Access application
+activate client
+
+client -> gateway : GET /journey/<journey_id>
+activate gateway
+note right of client: Single unified API call\ninstead of multiple calls
+
+'Gateway processing
+gateway -> gateway : Ratelimiting
+gateway -> gateway : routing
+gateway -> iam : Validate token
+activate iam
+iam -> iam : Verify token signature
+iam --> gateway : authorized
+deactivate iam
+
+'Route to Experience API
+gateway -> xapisidecar : Route to Experience API
+xapisidecar -> xapisidecar : Validate request
+xapisidecar -> xapisidecar : Validate token & claims
+xapisidecar -> xapisidecar : Policy execution
+xapisidecar -> journeyapi : Proxy request with auth context
+deactivate gateway
+activate journeyapi
+
+'User context processing
+journeyapi -> journeyapi : Extract user context
+journeyapi -> journeyapi : identify journey configs
+
+
+'Segment-specific adapter
+journeyapi -> segmentadapter : Apply config rules
+activate segmentadapter
+segmentadapter -> segmentadapter : idempotency check
+segmentadapter -> segmentadapter : Set rules
+segmentadapter --> journeyapi : apply configuration (transformation, error mapping, internationalization)
+deactivate segmentadapter
+
+'Check cache first
+journeyapi -> cache : Check for cached data
+activate cache
+cache -> cache : Generate cache keys based on\nuser ID and journey_id
+alt Cache hit for some/all components
+    cache --> journeyapi : Return cached components
+else Cache miss
+    cache --> journeyapi : No cached data available
+end
+deactivate cache
+
+'Orchestration for missing data
+journeyapi -> orchestration : Request missing components
+activate orchestration
+note right of orchestration: Parallel execution of\nbackend service calls
+
+'Parallel Process API calls
+par Component 1
+    orchestration -> xapisidecar1 : Get data
+    xapisidecar1 -> procapi1 : Get data
+    activate procapi1
+    procapi1 -> sysapi1 : Fetch backend data
+    activate sysapi1
+    sysapi1 --> procapi1 : Backend response
+    deactivate sysapi1
+    procapi1 --> orchestration : Processed data
+    deactivate procapi1
+    
+    par Component 2
+        orchestration -> xapisidecar2 : Get data
+        xapisidecar2 -> procapi2 : Get data
+        activate procapi2
+        procapi2 -> sysapi2 : Fetch backend data
+        activate sysapi2
+        sysapi2 --> procapi2 : Backend response
+        deactivate sysapi2
+        procapi2 --> orchestration : Processed data
+        deactivate procapi2
+    end
+    
+    par Component 3
+        orchestration -> xapisidecar3 : Get data
+        xapisidecar3 -> procapi3 : Get data
+        activate procapi3
+        procapi3 -> sysapi3 : Fetch backend data
+        activate sysapi3
+        sysapi3 --> procapi3 : Backend response
+        deactivate sysapi3
+        procapi3 --> orchestration : Processed data
+        deactivate procapi3
+    end
+
+    par Component 4
+        orchestration -> xapisidecar4 : Get data
+        xapisidecar4 -> procapi4 : Get data
+        activate procapi4
+        procapi4 -> sysapi4 : Fetch backend data
+        activate sysapi4
+        sysapi4 --> procapi4 : Backend response
+        deactivate sysapi4
+        procapi4 --> orchestration : Processed data
+        deactivate procapi4
+    end
+end
+
+'Collect all responses
+orchestration -> orchestration : Apply timeout handling
+orchestration -> orchestration : Handle partial failures
+
+orchestration --> journeyapi : All available component data
+deactivate orchestration
+
+'Aggregate responses
+journeyapi -> aggregator : Aggregate component data
+activate aggregator
+aggregator -> aggregator : Combine data sources
+aggregator -> aggregator : Resolve conflicts
+aggregator -> aggregator : Apply data transformations
+aggregator -> aggregator : Format response structure
+aggregator --> journeyapi : Unified response model
+deactivate aggregator
+
+'Update cache
+journeyapi -> cache : Update cache with new data
+activate cache
+cache -> cache : Store with appropriate TTL
+cache -> cache : Set invalidation triggers
+cache --> journeyapi : Cache updated
+deactivate cache
+
+'Return unified response
+journeyapi --> client : Complete journey data
+deactivate journeyapi
+
+'Client processing
+client -> client : Render view with\nall components
+client --> user : Display unified view
+deactivate client
+
+@enduml
